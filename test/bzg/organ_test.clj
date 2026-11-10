@@ -798,7 +798,7 @@
              (assert= "macro name" "my-macro" (:name macro))
              (assert= "macro args" ["1" "2"] (:args macro))])
 
-          (let [macro (first (organ/parse-inline "{{{my-macro(1,2\,3)}}}"))]
+          (let [macro (first (organ/parse-inline "{{{my-macro(1,2\\,3)}}}"))]
             [(assert= "macro recognition with args" :macro (:type macro))
              (assert= "macro name" "my-macro" (:name macro))
              (assert= "macro args with comma" ["1" "2,3"] (:args macro))])

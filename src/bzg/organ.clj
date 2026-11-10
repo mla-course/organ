@@ -695,6 +695,16 @@
       ;; re-groups is compiled into bb, unlike a loop over the groups
       (re-groups m))))
 
+(defn- try-parse-macro [text i]
+  (when-let [[full macro-name] (re-find-at   ;;      arg group
+                                #"^\{\{\{([^\}]*)\}\}\}" text i)]
+    ;; #"^\{\{\{([^(\}]*)\( ([^(]*,)* \)\)\}\}\}" text i)]
+    (let []
+      [(cond-> {:type :macro :args [] :name macro-name}
+             ;;args (assoc :args #_(parse-args))
+         )
+       (+ i (count full))])))
+
 (defn- try-parse-link [text i]
   (or (when-let [[full url desc] (re-find-at #"^\[\[([^\]]*)\]\[((?:[^\]]|\](?!\]))*)\]\]" text i)]
         (let [{:keys [link-type target]} (classify-link-url url)]
@@ -765,7 +775,7 @@
    timestamps ([), active timestamps (<), emphasis (* / _ +), literals (~ =),
    LaTeX fragments (\\ $). Plain text between two special characters is
    copied in a single step, which keeps the scan at host speed under SCI."
-  #"[\[<*/_+~=$\\]")
+  #"[\[{}<*/_+~=$\\]")
 
 (declare ^:private do-parse-inline)
 
@@ -775,6 +785,10 @@
   [^String text ^long i c]
   (let [len (.length text)]
     (cond
+      ;; macro: {{}}
+      (and (= c \{) (< (+ 2 i) len) (= (.charAt text (inc i)) \{) (= (.charAt text (+ 2 i)) \{))
+      (try-parse-macro text i)
+
       ;; Link: [[
       (and (= c \[) (< (inc i) len) (= (.charAt text (inc i)) \[))
       (try-parse-link text i)

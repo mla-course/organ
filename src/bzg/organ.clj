@@ -5,7 +5,8 @@
 (ns bzg.organ
   "Parse Org-mode text into an AST (EDN data)."
   (:require [clojure.string :as str]
-            [clojure.pprint :as pprint]))
+            [clojure.pprint :as pprint]
+            [clojure.string :as string]))
 
 ;; Interop calls in the hot parsing paths must stay reflection-free;
 ;; this makes any regression visible at JVM compile time (no-op in bb).
@@ -696,13 +697,17 @@
       (re-groups m))))
 
 (defn- try-parse-macro [text i]
-  (when-let [[full macro-name] (re-find-at   ;;      arg group
-                                #"^\{\{\{([^\}]*)\}\}\}" text i)]
-    ;; #"^\{\{\{([^(\}]*)\( ([^(]*,)* \)\)\}\}\}" text i)]
+  (when-let [[full macro-name args] (re-find-at   ;;      arg group
+                                       ;; #"^\{\{\{([^(\}]*)(\(([^(,\}]*)?(,([^(,\}]*)+)?\))?\}\}\}" ;; args
+                                       ;; #"^\{\{\{([^\}]*)\}\}\}" text i)] ;; no args
+                                     #"^\{\{\{([^(\}]*)(\(([^\(\}]*)\))?\}\}\}" ;; unparsed args
+                                     text i)]
     (let []
       [(cond-> {:type :macro :args [] :name macro-name}
-             ;;args (assoc :args #_(parse-args))
-         )
+         args (assoc :args (-> args
+                               (string/replace #"^\(" "")
+                               (string/replace #"\)$" "")
+                               (string/split #","))))
        (+ i (count full))])))
 
 (defn- try-parse-link [text i]

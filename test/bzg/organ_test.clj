@@ -1278,32 +1278,27 @@
 
           ;; --- Macros ---
           (let [macro (first (organ/parse-inline "{{{my-macro}}}"))]
-            [(assert= "macro recognition" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))])
+            (assert= "macro without arguments"
+                     {:type :macro :name "my-macro" :args []} macro))
 
           (let [macro (first (organ/parse-inline "{{{my-macro(1,2)}}}"))]
-            [(assert= "macro recognition with args" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))
-             (assert= "macro args" ["1" "2"] (:args macro))])
+            (assert= "macro with arguments"
+                     {:type :macro :name "my-macro" :args ["1" "2"]} macro))
 
           (let [macro (first (organ/parse-inline "{{{my-macro(1,2\\,3)}}}"))]
-            [(assert= "macro recognition with args" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))
-             (assert= "macro args with comma" ["1" "2,3"] (:args macro))])
+            (assert= "macro arguments with comma" ["1" "2,3"] (:args macro)))
 
           (let [macro (first (organ/parse-inline "{{{my-macro((with parens))}}}"))]
-            [(assert= "macro recognition with args" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))
-             (assert= "macro args with comma" ["(with parens)"] (:args macro))])
+            (assert= "macro with parens in argument"
+                     {:type :macro :name "my-macro" :args ["(with parens)"]} macro))
 
           ;; ensure the matching regexp is non greedy
           (let [[macro1 space macro2] (organ/parse-inline "{{{my-macro((1))}}} {{{second-macro(2)}}}")]
-            [(assert= "macro name" "my-macro" (:name macro1))
-             (assert= "macro args" ["(1)"] (:args macro1))
-             (assert= "space between macros type" :text (:type space))
-             (assert= "space between macros" " " (:value space))
-             (assert= "second macro name" "second-macro" (:name macro2))
-             (assert= "second macro args" ["2"] (:args macro2))])
+            [(assert= "first macro"
+                      {:type :macro :name "my-macro" :args ["(1)"]} macro1)
+             (assert= "space between macros" {:type :text, :value " "} space)
+             (assert= "second macro"
+                      {:type :macro, :args ["2"], :name "second-macro"} macro2)])
 
           ;; --- Test from test.org file if available ---
           (let [test-file "test/bzg/test.org"]

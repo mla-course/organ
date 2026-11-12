@@ -696,25 +696,6 @@
       ;; re-groups is compiled into bb, unlike a loop over the groups
       (re-groups m))))
 
-(def comma-marker "XXX-c716608a-XXX" )
-
-(defn- try-parse-macro [text i]
-  (when-let [[full macro-name args] (re-find-at   ;;      arg group
-                                       ;; #"^\{\{\{([^(\}]*)(\(([^(,\}]*)?(,([^(,\}]*)+)?\))?\}\}\}" ;; args
-                                       ;; #"^\{\{\{([^\}]*)\}\}\}" text i)] ;; no args
-                                     #"^\{\{\{([^(\}]*)(\(([^\(\}]*)\))?\}\}\}" ;; unparsed args
-                                     text i)]
-    (let []
-      [(cond-> {:type :macro :args [] :name macro-name}
-         args (assoc :args
-                     (map #(string/replace % comma-marker ",")
-                          (-> args
-                              (string/replace #"^\(" "")
-                              (string/replace #"\)$" "")
-                              (string/replace #"\\," comma-marker)
-                              (string/split #",")))))
-       (+ i (count full))])))
-
 (defn- try-parse-link [text i]
   (or (when-let [[full url desc] (re-find-at #"^\[\[([^\]]*)\]\[((?:[^\]]|\](?!\]))*)\]\]" text i)]
         (let [{:keys [link-type target]} (classify-link-url url)]
@@ -780,6 +761,13 @@
                  (match-latex-fragment text i latex-dollar-pattern  :dollar))))
     nil))
 
+(defn- try-parse-macro [text i]
+  (when-let [[full macro-name args] (re-find-at #"^\{\{\{([\w\-]+)(?:\((.+?)\))?\}\}\}" text i)]
+    [(cond-> {:type :macro :args [] :name macro-name}
+         args (assoc :args (mapv #(string/replace % #"\\," ",")
+                                 (string/split args #"(?<!\\),"))))
+       (+ i (count full))]))
+
 (def ^:private inline-special-pattern
   "Characters that can start an inline node: links, footnotes and inactive
    timestamps ([), active timestamps (<), emphasis (* / _ +), literals (~ =),
@@ -795,8 +783,10 @@
   [^String text ^long i c]
   (let [len (.length text)]
     (cond
-      ;; macro: {{}}
-      (and (= c \{) (< (+ 2 i) len) (= (.charAt text (inc i)) \{) (= (.charAt text (+ 2 i)) \{))
+      ;; macro: {{{
+      (and (= c \{) (< (+ 2 i) len)
+           (= (.charAt text (inc i)) \{)
+           (= (.charAt text (+ 2 i)) \{))
       (try-parse-macro text i)
 
       ;; Link: [[

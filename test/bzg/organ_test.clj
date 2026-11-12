@@ -789,20 +789,6 @@
                       nil
                       (seq (:children link)))])
 
-          (let [macro (first (organ/parse-inline "{{{my-macro}}}"))]
-            [(assert= "macro recognition" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))])
-
-          (let [macro (first (organ/parse-inline "{{{my-macro(1,2)}}}"))]
-            [(assert= "macro recognition with args" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))
-             (assert= "macro args" ["1" "2"] (:args macro))])
-
-          (let [macro (first (organ/parse-inline "{{{my-macro(1,2\\,3)}}}"))]
-            [(assert= "macro recognition with args" :macro (:type macro))
-             (assert= "macro name" "my-macro" (:name macro))
-             (assert= "macro args with comma" ["1" "2,3"] (:args macro))])
-
          ;; --- Link type classification ---
           (assert= "link type file"
                    :file
@@ -1290,7 +1276,36 @@
                      [(organ/inline-text (:definition item))
                       (mapv :type (:children item))]))
 
-         ;; --- Test from test.org file if available ---
+          ;; --- Macros ---
+          (let [macro (first (organ/parse-inline "{{{my-macro}}}"))]
+            [(assert= "macro recognition" :macro (:type macro))
+             (assert= "macro name" "my-macro" (:name macro))])
+
+          (let [macro (first (organ/parse-inline "{{{my-macro(1,2)}}}"))]
+            [(assert= "macro recognition with args" :macro (:type macro))
+             (assert= "macro name" "my-macro" (:name macro))
+             (assert= "macro args" ["1" "2"] (:args macro))])
+
+          (let [macro (first (organ/parse-inline "{{{my-macro(1,2\\,3)}}}"))]
+            [(assert= "macro recognition with args" :macro (:type macro))
+             (assert= "macro name" "my-macro" (:name macro))
+             (assert= "macro args with comma" ["1" "2,3"] (:args macro))])
+
+          (let [macro (first (organ/parse-inline "{{{my-macro((with parens))}}}"))]
+            [(assert= "macro recognition with args" :macro (:type macro))
+             (assert= "macro name" "my-macro" (:name macro))
+             (assert= "macro args with comma" ["(with parens)"] (:args macro))])
+
+          ;; ensure the matching regexp is non greedy
+          (let [[macro1 space macro2] (organ/parse-inline "{{{my-macro((1))}}} {{{second-macro(2)}}}")]
+            [(assert= "macro name" "my-macro" (:name macro1))
+             (assert= "macro args" ["(1)"] (:args macro1))
+             (assert= "space between macros type" :text (:type space))
+             (assert= "space between macros" " " (:value space))
+             (assert= "second macro name" "second-macro" (:name macro2))
+             (assert= "second macro args" ["2"] (:args macro2))])
+
+          ;; --- Test from test.org file if available ---
           (let [test-file "test/bzg/test.org"]
             (if (.exists (java.io.File. test-file))
               (let [ast (organ/parse-org (slurp test-file))]
